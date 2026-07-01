@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Супер</title>
+<link rel="manifest" href="manifest.json">
+
+<style>
+:root{
+    --bg:#0f0f0f;
+    --card-bg:#1a1a1a;
+    --primary:#9d4edd;
+    --secondary:#00b4d8;
+    --success:#2d6a4f;
+    --danger:#9b2226;
+    --text:#e0e0e0;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:10px;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Segoe UI,Roboto,sans-serif;
+}
+
+/* MAIN SCREEN */
+
+#main-screen{
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+}
+
+.header-stats{
+    background:linear-gradient(145deg,#222,#111);
+    padding:15px;
+    border-radius:15px;
+    border:1px solid #333;
+    margin-bottom:12px;
+}
+
+.stat-row{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:5px;
+}
+
+.stat-label{
+    color:#888;
+}
+
+#guests-wrapper{
+    flex:1;
+    overflow-y:auto;
+    padding-bottom:230px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+    gap:12px;
+}
+
+.tile{
+    background:var(--card-bg);
+    padding:18px;
+    border-radius:14px;
+    text-align:center;
+    border:1px solid #2a2a2a;
+    cursor:pointer;
+}
+
+.guest-active{
+    border-left:5px solid var(--secondary);
+}
+
+.guest-price{
+    display:block;
+    margin-top:10px;
+    color:var(--secondary);
+    font-weight:bold;
+    font-size:1.2em;
+}
+
+.bottom-panel{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    background:#111;
+    padding:10px;
+    border-top:1px solid #333;
+    z-index:100;
+}
+
+.nav-btn{
+    width:100%;
+    padding:16px;
+    border:none;
+    border-radius:14px;
+    color:white;
+    font-weight:700;
+    margin-bottom:8px;
+    cursor:pointer;
+    font-size:16px;
+}
+
+.bottom-panel .nav-btn:last-child{
+    margin-bottom:0;
+}
+
+/* MODALS */
+
+.modal-screen{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:var(--bg);
+    z-index:999;
+    flex-direction:column;
+    padding:15px;
+    overflow-y:auto;
+}
+
+.receipt-panel{
+    background:#111;
+    border-top:3px solid var(--primary);
+    margin-top:15px;
+}
+
+.receipt-scroll{
+    max-height:40vh;
+    overflow-y:auto;
+    padding:10px;
+}
+
+.receipt-item{
+    display:flex;
+    justify-content:space-between;
+    padding:10px 0;
+    border-bottom:1px solid #222;
+}
+
+input,select{
+    width:100%;
+    padding:12px;
+    margin:8px 0;
+    background:#222;
+    border:1px solid #444;
+    color:white;
+    border-radius:8px;
+}
+
+.history-card{
+    background:#1a1a1a;
+    padding:15px;
+    border-radius:12px;
+    margin-bottom:12px;
+    border-left:5px solid var(--primary);
+}
+</style>
+</head>
+
+<body>
+
+<!-- MAIN -->
+
+<div id="main-screen">
+
+<div class="header-stats">
+<div class="stat-row">
+<span class="stat-label">Общий доход:</span>
+<span id="all-time-earnings">0</span>
+</div>
+
+<div class="stat-row">
+<span class="stat-label">За смену:</span>
+<span id="shift-earnings" style="color:var(--success)">0</span>
+</div>
+
+<div style="text-align:right;margin-top:10px">
+<span onclick="showHistory()" style="cursor:pointer;color:var(--primary);text-decoration:underline">📜 История смен</span>
+</div>
+</div>
+
+<div id="guests-wrapper">
+<div id="guests-grid" class="grid"></div>
+</div>
+
+<div class="bottom-panel">
+<button class="nav-btn" style="background:var(--primary)" onclick="showAddGuest()">+ НОВЫЙ СТОЛ</button>
+<button class="nav-btn" style="background:#333" onclick="showMenuEditor()">⚙️ МЕНЮ</button>
+<button class="nav-btn" style="background:var(--danger)" onclick="endShift()">🏁 ЗАВЕРШИТЬ СМЕНУ</button>
+</div>
+
+</div>
+
+<!-- ORDER -->
+
+<div id="order-screen" class="modal-screen">
+
+<h2 id="current-guest-label"></h2>
+
+<div id="dept-selection" class="grid">
+<div class="tile" onclick="showCategories('Кухня')">🥘 КУХНЯ</div>
+<div class="tile" onclick="showCategories('Бар')">🍺 БАР</div>
+</div>
+
+<div id="category-selection" class="grid" style="display:none"></div>
+<div id="item-selection" class="grid" style="display:none"></div>
+
+<div class="receipt-panel">
+<div class="receipt-scroll" id="receipt-list"></div>
+
+<div style="padding:12px;display:flex;justify-content:space-between">
+<span>СУММА:</span>
+<span id="guest-total-price" style="color:var(--secondary)">0</span>
+</div>
+
+<button class="nav-btn" style="background:#444;margin:10px" onclick="closeOrderScreen()">СОХРАНИТЬ</button>
+</div>
+
+</div>
+
+<!-- HISTORY -->
+
+<div id="history-screen" class="modal-screen">
+<div id="history-list"></div>
+</div>
+
+<!-- MENU -->
+
+<div id="menu-editor" class="modal-screen">
+
+<button class="nav-btn" style="background:#444" onclick="hideMenu()">← НАЗАД</button>
+
+<h3>Добавить блюдо</h3>
+
+<select id="new-item-dept" onchange="updateCategorySelect()">
+<option value="Кухня">Кухня</option>
+<option value="Бар">Бар</option>
+</select>
+
+<div style="display:flex;gap:5px">
+<select id="new-item-cat-select"></select>
+<button onclick="addNewCategory()" style="width:60px;background:var(--secondary);border:none;border-radius:8px;color:white">+</button>
+</div>
+
+<input id="new-item-name" placeholder="Название">
+<input id="new-item-price" type="number" placeholder="Цена">
+
+<button class="nav-btn" style="background:var(--success)" onclick="saveNewItem()">ДОБАВИТЬ</button>
+
+<div id="menu-list-container"></div>
+
+</div>
+
+<script>
+let activeGuestId = null;
+
+let appData = {
+menu:[],
+categories:{Кухня:[],Бар:[]},
+history:[],
+guests:[],
+allTimeEarnings:0,
+percent:10
+};
+
+function save(){
+localStorage.setItem("waiterData_v8",JSON.stringify(appData));
+}
+
+function init(){
+const saved = localStorage.getItem("waiterData_v8");
+if(saved) appData = JSON.parse(saved);
+renderGuests();
+updateStats();
+}
+
+function updateStats(){
+
+let total = 0;
+appData.guests.forEach(g=>total+=g.total);
+
+let earn = total * appData.percent / 100;
+
+appData.allTimeEarnings =
+appData.history.reduce(
+(sum,h)=>sum+h.earnings,
+0
+);
+
+document.getElementById("all-time-earnings").innerText =
+appData.allTimeEarnings.toFixed(2);
+
+document.getElementById("shift-earnings").innerText =
+earn.toFixed(2);
+
+save();
+
+}
+function renderGuests(){
+const box = document.getElementById("guests-grid");
+box.innerHTML = "";
+
+appData.guests.forEach(g=>{
+
+let color = "#555";
+
+if(g.total >= 1000) color = "#0077b6";
+if(g.total >= 5000) color = "#2d6a4f";
+if(g.total >= 10000) color = "#d4af37";
+
+box.innerHTML += `
+<div class="tile guest-active"
+style="
+position:relative;
+border-left:5px solid ${color}">
+
+<div onclick="openOrder(${g.id})">
+<b>Стол ${g.name}</b>
+
+<span class="guest-price" style="color:${color}">
+${g.total}
+</span>
+</div>
+
+<button
+onclick="event.stopPropagation();deleteGuest(${g.id})"
+style="
+position:absolute;
+top:8px;
+right:8px;
+background:transparent;
+border:none;
+color:#666;
+font-size:14px;
+cursor:pointer;
+opacity:.5;">
+🗑
+</button>
+
+</div>
+`;
+});
+
+}
+
+function showAddGuest(){
+let name = prompt("№ Стола");
+if(!name) return;
+
+appData.guests.push({
+id:Date.now(),
+name:name,
+items:[],
+total:0
+});
+
+save();
+renderGuests();
+updateStats();
+}
+
+function openOrder(id){
+activeGuestId=id;
+document.getElementById("order-screen").style.display="flex";
+
+const g = appData.guests.find(x=>x.id===id);
+document.getElementById("current-guest-label").innerText="Стол "+g.name;
+
+resetOrderNav();
+renderReceipt();
+}
+
+function closeOrderScreen(){
+document.getElementById("order-screen").style.display="none";
+renderGuests();
+}
+
+function resetOrderNav(){
+document.getElementById("dept-selection").style.display="grid";
+document.getElementById("category-selection").style.display="none";
+document.getElementById("item-selection").style.display="none";
+}
+
+function showCategories(dept){
+document.getElementById("dept-selection").style.display="none";
+
+const box = document.getElementById("category-selection");
+box.style.display="grid";
+
+box.innerHTML=`<button class="nav-btn" style="background:#333;grid-column:1/-1" onclick="resetOrderNav()">← НАЗАД</button>`;
+
+appData.categories[dept].forEach(cat=>{
+box.innerHTML += `<div class="tile" onclick="showItems('${dept}','${cat}')">${cat}</div>`;
+});
+}
+
+function showItems(dept,cat){
+document.getElementById("category-selection").style.display="none";
+
+const box = document.getElementById("item-selection");
+box.style.display="grid";
+
+box.innerHTML=`<button class="nav-btn" style="background:#333;grid-column:1/-1" onclick="showCategories('${dept}')">← НАЗАД</button>`;
+
+appData.menu
+.filter(i=>i.dept===dept && i.cat===cat)
+.forEach(i=>{
+box.innerHTML += `<div class="tile" onclick="addItemToOrder(${i.id})">${i.name}<br>${i.price}</div>`;
+});
+}
+
+function addItemToOrder(id){
+const item = appData.menu.find(i=>i.id===id);
+const guest = appData.guests.find(g=>g.id===activeGuestId);
+
+guest.items.push({...item,orderId:Date.now()});
+guest.total += Number(item.price);
+
+save();
+renderReceipt();
+updateStats();
+}
+
+function renderReceipt(){
+const guest = appData.guests.find(g=>g.id===activeGuestId);
+const box = document.getElementById("receipt-list");
+
+box.innerHTML="";
+
+guest.items.forEach(i=>{
+box.innerHTML += `
+<div class="receipt-item">
+<span>${i.name}</span>
+<span>${i.price}
+<button onclick="removeItem(${i.orderId})" style="background:none;border:none;color:red">✕</button>
+</span>
+</div>`;
+});
+
+document.getElementById("guest-total-price").innerText = guest.total;
+}
+
+function removeItem(id){
+const guest = appData.guests.find(g=>g.id===activeGuestId);
+const index = guest.items.findIndex(i=>i.orderId===id);
+
+guest.total -= guest.items[index].price;
+guest.items.splice(index,1);
+
+save();
+renderReceipt();
+updateStats();
+}
+
+function showHistory(){
+const box = document.getElementById("history-list");
+
+box.innerHTML = `
+<button class="nav-btn" style="background:#444" onclick="hideHistory()">← НАЗАД</button>
+<h2>История смен</h2>
+`;
+
+if(appData.history.length === 0){
+box.innerHTML += "<p>История пуста</p>";
+}
+
+appData.history.forEach((h,index)=>{
+
+box.innerHTML += `
+<div class="history-card">
+
+<div style="display:flex;justify-content:space-between">
+
+<b>${h.date}</b>
+
+<button
+onclick="deleteHistory(${index})"
+style="
+background:red;
+border:none;
+color:white;
+padding:6px 10px;
+border-radius:8px;
+cursor:pointer">
+✕
+</button>
+
+</div>
+
+<div style="margin:8px 0">
+Доход:
+<span style="color:var(--success)">
+${h.earnings.toFixed(2)}
+</span>
+</div>
+
+<details style="margin-top:10px;background:#222;padding:10px;border-radius:8px;">
+<summary style="cursor:pointer;color:var(--secondary)">
+Посмотреть детали
+</summary>
+
+<div style="margin-top:10px">
+
+${h.guests.map(g=>`
+<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #333">
+<span>Стол ${g.name}</span>
+<span style="color:var(--secondary)">
+${g.total}
+</span>
+</div>
+`).join("")}
+
+</div>
+
+</details>
+
+</div>
+`;
+
+});
+
+document.getElementById("main-screen").style.display = "none";
+document.getElementById("history-screen").style.display = "flex";
+
+}
+
+function endShift(){
+let total=0;
+appData.guests.forEach(g=>total+=g.total);
+
+let earn = total * appData.percent /100;
+
+if(!confirm("Завершить смену? Доход "+earn.toFixed(2))) return;
+
+appData.history.unshift({
+date:new Date().toLocaleString(),
+earnings:earn,
+guests:JSON.parse(JSON.stringify(appData.guests))
+});
+
+appData.allTimeEarnings += earn;
+appData.guests=[];
+
+save();
+renderGuests();
+updateStats();
+}
+
+function showMenuEditor(){
+document.getElementById("menu-editor").style.display="flex";
+updateCategorySelect();
+renderMenuList();
+}
+
+function hideMenu(){
+document.getElementById("menu-editor").style.display="none";
+}
+
+function updateCategorySelect(){
+const dept = document.getElementById("new-item-dept").value;
+const box = document.getElementById("new-item-cat-select");
+
+box.innerHTML="";
+
+appData.categories[dept].forEach(c=>{
+box.innerHTML += `<option value="${c}">${c}</option>`;
+});
+}
+
+function addNewCategory(){
+const dept = document.getElementById("new-item-dept").value;
+const name = prompt("Название категории");
+
+if(!name) return;
+
+appData.categories[dept].push(name);
+save();
+updateCategorySelect();
+}
+
+function saveNewItem(){
+const name = document.getElementById("new-item-name").value;
+const price = Number(document.getElementById("new-item-price").value);
+const dept = document.getElementById("new-item-dept").value;
+const cat = document.getElementById("new-item-cat-select").value;
+
+if(!name || !price || !cat) return;
+
+appData.menu.push({
+id:Date.now(),
+name:name,
+price:price,
+dept:dept,
+cat:cat
+});
+
+save();
+renderMenuList();
+}
+
+function renderMenuList(){
+    const box = document.getElementById("menu-list-container");
+    box.innerHTML = "";
+
+    // Категории
+    box.innerHTML += "<h3>Категории</h3>";
+
+    ["Кухня","Бар"].forEach(dept=>{
+        box.innerHTML += `<h4>${dept}</h4>`;
+
+        appData.categories[dept].forEach(cat=>{
+            box.innerHTML += `
+            <div style="display:flex;justify-content:space-between;align-items:center;background:#222;padding:10px;margin-bottom:5px;border-radius:8px">
+                <span>${cat}</span>
+                <button onclick="deleteCategory('${dept}','${cat}')" style="background:none;border:none;color:red;font-size:18px;cursor:pointer">✕</button>
+            </div>`;
+        });
+    });
+
+    box.innerHTML += "<h3>Блюда</h3>";
+
+    appData.menu.forEach(i=>{
+        box.innerHTML += `
+        <div style="display:flex;justify-content:space-between;padding:10px;background:#222;margin-bottom:5px;border-radius:8px">
+            <span>${i.name} (${i.cat})</span>
+            <button onclick="deleteMenuItem(${i.id})" style="background:none;border:none;color:red">✕</button>
+        </div>`;
+    });
+}
+
+function deleteCategory(dept, cat){
+
+    if(!confirm(`Удалить категорию "${cat}"?`)) return;
+
+    // Удаляем категорию
+    appData.categories[dept] =
+        appData.categories[dept].filter(c => c !== cat);
+
+    // Удаляем все блюда этой категории
+    appData.menu =
+        appData.menu.filter(i => !(i.dept === dept && i.cat === cat));
+
+    save();
+    updateCategorySelect();
+    renderMenuList();
+}
+
+function deleteMenuItem(id){
+appData.menu = appData.menu.filter(i=>i.id!==id);
+save();
+renderMenuList();
+}
+
+init();
+
+if("serviceWorker" in navigator){
+navigator.serviceWorker.register("sw.js");
+}
+
+function hideHistory(){
+    document.getElementById("history-screen").style.display = "none";
+    document.getElementById("main-screen").style.display = "flex";
+}
+
+function deleteGuest(id){
+
+if(!confirm("Удалить стол?")) return;
+
+appData.guests =
+appData.guests.filter(g=>g.id!==id);
+
+save();
+renderGuests();
+updateStats();
+
+document.getElementById("order-screen").style.display="none";
+}
+
+function deleteHistory(index){
+
+if(!confirm("Удалить эту смену?")) return;
+
+const deleted = appData.history[index];
+
+appData.allTimeEarnings -= deleted.earnings;
+
+if(appData.allTimeEarnings < 0){
+appData.allTimeEarnings = 0;
+}
+
+appData.history.splice(index,1);
+
+save();
+
+updateStats();
+
+showHistory();
+
+}
+
+if (!appData.categories["Кухня"].includes("ХОЛОДНЫЕ ЗАКУСКИ")) {
+    appData.categories["Кухня"].push("ХОЛОДНЫЕ ЗАКУСКИ");
+}
+
+if(appData.menu.length === 0){
+
+appData.menu.push(
+{id:Date.now()+1,name:"ОВОЩНОЕ АССОРТИ БОЛЬШОЙ",price:460,dept:"Кухня",cat:"ХОЛОДНЫЕ ЗАКУСКИ"},
+{id:Date.now()+2,name:"ОВОЩНОЕ АССОРТИ МИНИ",price:290,dept:"Кухня",cat:"ХОЛОДНЫЕ ЗАКУСКИ"},
+{id:Date.now()+3,name:"МЯСНОЕ АССОРТИ",price:700,dept:"Кухня",cat:"ХОЛОДНЫЕ ЗАКУСКИ"},
+{id:Date.now()+4,name:"СЫРНАЯ ТАРЕЛКА",price:600,dept:"Кухня",cat:"ХОЛОДНЫЕ ЗАКУСКИ"}
+);
+
+
+
+
+if (!appData.categories["Кухня"].includes("ЗАВТРАК")) {
+    appData.categories["Кухня"].push("ЗАВТРАК");
+}
+
+appData.menu.push(
+{id:Date.now()+15,name:"ТУРЕЦКИЙ ЗАВТРАК",price:402,dept:"Кухня",cat:"ЗАВТРАК"},
+{id:Date.now()+16,name:"АНГЛИЙСКИЙ ЗАВТРАК",price:280,dept:"Кухня",cat:"ЗАВТРАК"},
+{id:Date.now()+17,name:"БЛИНЧИК СО СМЕТАНОЙ",price:150,dept:"Кухня",cat:"ЗАВТРАК"},
+{id:Date.now()+18,name:"БЛИНЧИК С МЕДОМ",price:150,dept:"Кухня",cat:"ЗАВТРАК"},
+{id:Date.now()+19,name:"БЛИНЧИК С ВАРЕНЬЕМ",price:150,dept:"Кухня",cat:"ЗАВТРАК"},
+{id:Date.now()+20,name:"БЛИНЧИК С ТВОРОГОМ",price:150,dept:"Кухня",cat:"ЗАВТРАК"},
+{id:Date.now()+21,name:"ОВСЯНАЯ КАША",price:170,dept:"Кухня",cat:"ЗАВТРАК"},
+{id:Date.now()+22,name:"РИСОВАЯ КАША",price:170,dept:"Кухня",cat:"ЗАВТРАК"},
+{id:Date.now()+23,name:"МАННАЯ КАША",price:170,dept:"Кухня",cat:"ЗАВТРАК"},
+{id:Date.now()+24,name:"ОМЛЕТ",price:180,dept:"Кухня",cat:"ЗАВТРАК"},
+{id:Date.now()+25,name:"ЯИЧНИЦА С ГЛАЗУНЬЕЙ",price:140,dept:"Кухня",cat:"ЗАВТРАК"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("САЛАТЫ")) {
+    appData.categories["Кухня"].push("САЛАТЫ");
+}
+
+appData.menu.push(
+{id:Date.now()+5,name:"ФИРМЕННЫЙ ПРЕСТИЖ",price:450,dept:"Кухня",cat:"САЛАТЫ"},
+{id:Date.now()+6,name:"САЛАТ КОРОЛЬ",price:450,dept:"Кухня",cat:"САЛАТЫ"},
+{id:Date.now()+7,name:"ЦЕЗАРЬ / С КУРИЦЕЙ",price:450,dept:"Кухня",cat:"САЛАТЫ"},
+{id:Date.now()+8,name:"ЦЕЗАРЬ / С КРЕВЕТКОЙ",price:450,dept:"Кухня",cat:"САЛАТЫ"},
+{id:Date.now()+9,name:"ГРЕЧЕСКИЙ",price:350,dept:"Кухня",cat:"САЛАТЫ"},
+{id:Date.now()+10,name:"КАПРИЗ",price:350,dept:"Кухня",cat:"САЛАТЫ"},
+{id:Date.now()+11,name:"ХАЙДАРИ",price:230,dept:"Кухня",cat:"САЛАТЫ"},
+{id:Date.now()+12,name:"БАКЛАЖАНОВЫЙ",price:360,dept:"Кухня",cat:"САЛАТЫ"},
+{id:Date.now()+13,name:"КИТАЙСКИЙ",price:400,dept:"Кухня",cat:"САЛАТЫ"},
+{id:Date.now()+14,name:"ФРУКТОВЫЙ",price:280,dept:"Кухня",cat:"САЛАТЫ"}
+);
+
+
+if (!appData.categories["Кухня"].includes("СУПЫ")) {
+    appData.categories["Кухня"].push("СУПЫ");
+}
+
+appData.menu.push(
+{id:Date.now()+101,name:"ЧЕЧЕВИЧНЫЙ СУП",price:280,dept:"Кухня",cat:"СУПЫ"},
+{id:Date.now()+102,name:"КУРИНЫЙ СУП",price:280,dept:"Кухня",cat:"СУПЫ"},
+{id:Date.now()+103,name:"ФРИКАДЕЛЬКИ",price:350,dept:"Кухня",cat:"СУПЫ"},
+{id:Date.now()+104,name:"ШОРПО ИЗ БАРАНИНЫ",price:380,dept:"Кухня",cat:"СУПЫ"},
+{id:Date.now()+105,name:"ШОРПО ГОВЯЖИЙ",price:380,dept:"Кухня",cat:"СУПЫ"},
+{id:Date.now()+106,name:"ПЕКИНСКИЙ ОСТРЫЙ",price:350,dept:"Кухня",cat:"СУПЫ"},
+{id:Date.now()+107,name:"КОЧО АШ",price:380,dept:"Кухня",cat:"СУПЫ"},
+{id:Date.now()+108,name:"МЯСО ПО-КАЗАХСКИ",price:350,dept:"Кухня",cat:"СУПЫ"},
+{id:Date.now()+109,name:"КРЕМ СУП ИЗ БРОККОЛИ",price:300,dept:"Кухня",cat:"СУПЫ"},
+{id:Date.now()+110,name:"ОКРОШКА НА КЕФИРЕ",price:200,dept:"Кухня",cat:"СУПЫ"},
+{id:Date.now()+111,name:"ТОПОЗ ШОРПО",price:380,dept:"Кухня",cat:"СУПЫ"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("ПИДЕ И ХЛЕБ")) {
+    appData.categories["Кухня"].push("ПИДЕ И ХЛЕБ");
+}
+
+appData.menu.push(
+{id:Date.now()+112,name:"ПИДЕ С ФАРШЕМ И СЫРОМ",price:450,dept:"Кухня",cat:"ПИДЕ И ХЛЕБ"},
+{id:Date.now()+113,name:"ПИДЕ С СЫРОМ",price:400,dept:"Кухня",cat:"ПИДЕ И ХЛЕБ"},
+{id:Date.now()+114,name:"ПИДЕ С СЫРОМ И ОВОЩАМИ",price:400,dept:"Кухня",cat:"ПИДЕ И ХЛЕБ"},
+{id:Date.now()+115,name:"ПИДЕ С СЫРОМ И ЯЙЦОМ",price:400,dept:"Кухня",cat:"ПИДЕ И ХЛЕБ"},
+{id:Date.now()+116,name:"ПИДЕ С КОЛБАСОЙ",price:400,dept:"Кухня",cat:"ПИДЕ И ХЛЕБ"},
+{id:Date.now()+117,name:"КАТТАМА ОБЫЧНЫЙ",price:170,dept:"Кухня",cat:"ПИДЕ И ХЛЕБ"},
+{id:Date.now()+118,name:"КАТТАМА С ЛУКОМ",price:200,dept:"Кухня",cat:"ПИДЕ И ХЛЕБ"},
+{id:Date.now()+119,name:"ХЛЕБ",price:60,dept:"Кухня",cat:"ПИДЕ И ХЛЕБ"},
+{id:Date.now()+120,name:"АССОРТИ ХЛЕБ",price:180,dept:"Кухня",cat:"ПИДЕ И ХЛЕБ"},
+{id:Date.now()+121,name:"БООРСОК 1 КГ",price:300,dept:"Кухня",cat:"ПИДЕ И ХЛЕБ"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("ПИЦЦА")) {
+    appData.categories["Кухня"].push("ПИЦЦА");
+}
+
+appData.menu.push(
+{id:Date.now()+122,name:"ПЕППЕРОНИ",price:570,dept:"Кухня",cat:"ПИЦЦА"},
+{id:Date.now()+123,name:"ЧЕТЫРЕ СЫРА",price:667,dept:"Кухня",cat:"ПИЦЦА"},
+{id:Date.now()+124,name:"МАРГАРИТА",price:520,dept:"Кухня",cat:"ПИЦЦА"},
+{id:Date.now()+125,name:"КУРИНАЯ",price:520,dept:"Кухня",cat:"ПИЦЦА"},
+{id:Date.now()+126,name:"КЕБАБ ПИЦЦА",price:650,dept:"Кухня",cat:"ПИЦЦА"},
+{id:Date.now()+127,name:"ПИЦЦА МЯСНАЯ",price:650,dept:"Кухня",cat:"ПИЦЦА"},
+{id:Date.now()+128,name:"ЧЕТЫРЕ СЕЗОНА",price:650,dept:"Кухня",cat:"ПИЦЦА"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("РОЛЛЫ")) {
+    appData.categories["Кухня"].push("РОЛЛЫ");
+}
+
+appData.menu.push(
+{id:Date.now()+201,name:"ФИЛАДЕЛЬФИЯ",price:450,dept:"Кухня",cat:"РОЛЛЫ"},
+{id:Date.now()+202,name:"ФИЛАДЕЛЬФИЯ С КУНЖУТОМ",price:360,dept:"Кухня",cat:"РОЛЛЫ"},
+{id:Date.now()+203,name:"КАЛИФОРНИЯ С КРАБОМ",price:450,dept:"Кухня",cat:"РОЛЛЫ"},
+{id:Date.now()+204,name:"КАЛИФОРНИЯ С ЛОСОСЕМ",price:450,dept:"Кухня",cat:"РОЛЛЫ"},
+{id:Date.now()+205,name:"ЗАПЕЧЁННАЯ КУРИЦА",price:420,dept:"Кухня",cat:"РОЛЛЫ"},
+{id:Date.now()+206,name:"ЗАПЕЧЁННЫЙ ЛОСОСЬ",price:450,dept:"Кухня",cat:"РОЛЛЫ"},
+{id:Date.now()+207,name:"ЗАПЕЧЁННЫЙ УГОРЬ",price:450,dept:"Кухня",cat:"РОЛЛЫ"},
+{id:Date.now()+208,name:"ТЕМПУРА С ЛОСОСЕМ",price:480,dept:"Кухня",cat:"РОЛЛЫ"},
+{id:Date.now()+209,name:"ТЕМПУРА С КРАБОМ",price:450,dept:"Кухня",cat:"РОЛЛЫ"},
+{id:Date.now()+210,name:"ТЕМПУРА С КРЕВЕТКАМИ",price:450,dept:"Кухня",cat:"РОЛЛЫ"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("СЕТЫ")) {
+    appData.categories["Кухня"].push("СЕТЫ");
+}
+
+appData.menu.push(
+{id:Date.now()+211,name:"СЕТ ТОКИО",price:1600,dept:"Кухня",cat:"СЕТЫ"},
+{id:Date.now()+212,name:"СЕТ ПРЕСТИЖ",price:2500,dept:"Кухня",cat:"СЕТЫ"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("ГАРНИРЫ")) {
+    appData.categories["Кухня"].push("ГАРНИРЫ");
+}
+
+appData.menu.push(
+{id:Date.now()+213,name:"ОВОЩИ НА ГРИЛЕ",price:180,dept:"Кухня",cat:"ГАРНИРЫ"},
+{id:Date.now()+214,name:"РИС",price:120,dept:"Кухня",cat:"ГАРНИРЫ"},
+{id:Date.now()+215,name:"КАРТОФЕЛЬ ФРИ",price:150,dept:"Кухня",cat:"ГАРНИРЫ"},
+{id:Date.now()+216,name:"КАРТОШКА ПО-ДЕРЕВЕНСКИ",price:160,dept:"Кухня",cat:"ГАРНИРЫ"},
+{id:Date.now()+217,name:"КАРТОФЕЛЬНОЕ ПЮРЕ",price:150,dept:"Кухня",cat:"ГАРНИРЫ"},
+{id:Date.now()+218,name:"АЙРАН",price:100,dept:"Кухня",cat:"ГАРНИРЫ"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("СОУСЫ")) {
+    appData.categories["Кухня"].push("СОУСЫ");
+}
+
+appData.menu.push(
+{id:Date.now()+219,name:"ТАР ТАР",price:50,dept:"Кухня",cat:"СОУСЫ"},
+{id:Date.now()+220,name:"ШАШЛЫЧНЫЙ",price:50,dept:"Кухня",cat:"СОУСЫ"},
+{id:Date.now()+221,name:"ЛАЗА",price:50,dept:"Кухня",cat:"СОУСЫ"},
+{id:Date.now()+222,name:"КЕТЧУП",price:30,dept:"Кухня",cat:"СОУСЫ"},
+{id:Date.now()+223,name:"МАЙОНЕЗ",price:30,dept:"Кухня",cat:"СОУСЫ"},
+{id:Date.now()+224,name:"ЧЕСНОЧНЫЙ СОУС",price:50,dept:"Кухня",cat:"СОУСЫ"},
+{id:Date.now()+225,name:"СЫРНЫЙ СОУС",price:50,dept:"Кухня",cat:"СОУСЫ"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("БЛЮДА НА КОМПАНИЮ И УСЛУГИ")) {
+    appData.categories["Кухня"].push("БЛЮДА НА КОМПАНИЮ И УСЛУГИ");
+}
+
+appData.menu.push(
+{id:Date.now()+226,name:"ТАШКЕНТСКИЙ ПЛОВ 1 КГ",price:2800,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"},
+{id:Date.now()+227,name:"УЗГЕНСКИЙ ПЛОВ 1 КГ",price:2800,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"},
+{id:Date.now()+228,name:"ПИРОЖОК 1 КГ",price:3200,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"},
+{id:Date.now()+229,name:"ИНДЮК 1 КГ",price:1500,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"},
+{id:Date.now()+230,name:"ГОВЯЖИЙ ШОРПО / ШОРПО ИЗ БАРАНИНЫ (6 ПОРЦИЙ)",price:1500,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"},
+{id:Date.now()+231,name:"ГОВЯЖИЙ ШОРПО / ШОРПО ИЗ БАРАНИНЫ (12 ПОРЦИЙ)",price:2800,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"},
+{id:Date.now()+232,name:"ПИРОЖОК 1 КГ (НА ЗАКАЗ)",price:950,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"},
+{id:Date.now()+233,name:"ПИРОЖОК 2 КГ",price:1700,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"},
+{id:Date.now()+234,name:"ПРИГОТОВЛЕНИЕ БАРАНА",price:2300,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"},
+{id:Date.now()+235,name:"ПРИГОТОВЛЕНИЕ ИНДЮКА (КГ)",price:600,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"},
+{id:Date.now()+236,name:"ФРУКТОВАЯ НАРЕЗКА",price:180,dept:"Кухня",cat:"БЛЮДА НА КОМПАНИЮ И УСЛУГИ"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("НАПИТКИ")) {
+    appData.categories["Бар"].push("НАПИТКИ");
+}
+
+appData.menu.push(
+{id:Date.now()+301,name:"КОКА-КОЛА (0.5Л)",price:80,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+302,name:"КОКА-КОЛА (1Л)",price:160,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+303,name:"ФАНТА",price:160,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+304,name:"СПРАЙТ",price:160,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+305,name:"ПЕПСИ (0.5Л)",price:80,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+306,name:"ПЕПСИ (1Л)",price:160,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+307,name:"СОК GRACIO",price:240,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+308,name:"ЖАЛАЛ АБАД (0.5Л)",price:80,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+309,name:"ЖАЛАЛ АБАД (1Л)",price:90,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+310,name:'ВОДА "ПАМИР" (0.5Л)',price:40,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+311,name:'ВОДА "ПАМИР" (1Л)',price:55,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+312,name:"J7",price:240,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+313,name:"МАКСЫМ ШОРО",price:200,dept:"Бар",cat:"НАПИТКИ"},
+{id:Date.now()+314,name:"ЧАЛАП ШОРО",price:200,dept:"Бар",cat:"НАПИТКИ"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("ЛИМОНАДЫ")) {
+    appData.categories["Бар"].push("ЛИМОНАДЫ");
+}
+
+appData.menu.push(
+{id:Date.now()+315,name:"ГАВАЙСКИЙ БРИЗ",price:350,dept:"Бар",cat:"ЛИМОНАДЫ"},
+{id:Date.now()+316,name:"МОХИТО",price:350,dept:"Бар",cat:"ЛИМОНАДЫ"},
+{id:Date.now()+317,name:"ЯГОДНЫЙ МОХИТО",price:350,dept:"Бар",cat:"ЛИМОНАДЫ"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("СНЕКИ")) {
+    appData.categories["Бар"].push("СНЕКИ");
+}
+
+appData.menu.push(
+{id:Date.now()+318,name:"ЧЕЧИЛ",price:160,dept:"Бар",cat:"СНЕКИ"},
+{id:Date.now()+319,name:"КУРУТ",price:50,dept:"Бар",cat:"СНЕКИ"},
+{id:Date.now()+320,name:"ЧИПСЫ",price:200,dept:"Бар",cat:"СНЕКИ"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("АЛКОГОЛЬНЫЕ КОКТЕЙЛИ")) {
+    appData.categories["Бар"].push("АЛКОГОЛЬНЫЕ КОКТЕЙЛИ");
+}
+
+appData.menu.push(
+{id:Date.now()+321,name:"CAMPARI",price:350,dept:"Бар",cat:"АЛКОГОЛЬНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+322,name:"АПЕРОЛЬ ШПРИЦ",price:350,dept:"Бар",cat:"АЛКОГОЛЬНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+323,name:"ХИРОСИМА",price:350,dept:"Бар",cat:"АЛКОГОЛЬНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+324,name:"B-52",price:350,dept:"Бар",cat:"АЛКОГОЛЬНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+325,name:"ПИНА КОЛАДА",price:280,dept:"Бар",cat:"АЛКОГОЛЬНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+326,name:"РОМ КОЛА",price:280,dept:"Бар",cat:"АЛКОГОЛЬНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+327,name:"ЛОНГ АЙЛЕНД",price:360,dept:"Бар",cat:"АЛКОГОЛЬНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+328,name:"ЛЕДИ АЙЛЕНД",price:360,dept:"Бар",cat:"АЛКОГОЛЬНЫЕ КОКТЕЙЛИ"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("МОЛОЧНЫЕ КОКТЕЙЛИ")) {
+    appData.categories["Бар"].push("МОЛОЧНЫЕ КОКТЕЙЛИ");
+}
+
+appData.menu.push(
+{id:Date.now()+329,name:"ВАНИЛЬНЫЙ",price:230,dept:"Бар",cat:"МОЛОЧНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+330,name:"ШОКОЛАДНЫЙ",price:230,dept:"Бар",cat:"МОЛОЧНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+331,name:"БАНАНОВЫЙ",price:230,dept:"Бар",cat:"МОЛОЧНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+332,name:"БАБЛ ГАМ",price:230,dept:"Бар",cat:"МОЛОЧНЫЕ КОКТЕЙЛИ"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("ВЕРМУТ")) {
+    appData.categories["Бар"].push("ВЕРМУТ");
+}
+
+appData.menu.push(
+{id:Date.now()+333,name:"MARTINI (БУТЫЛКА)",price:2100,dept:"Бар",cat:"ВЕРМУТ"},
+{id:Date.now()+334,name:"MARTINI (БОКАЛ)",price:230,dept:"Бар",cat:"ВЕРМУТ"},
+
+{id:Date.now()+335,name:"CHINZANO ROSE (БУТЫЛКА)",price:1300,dept:"Бар",cat:"ВЕРМУТ"},
+{id:Date.now()+336,name:"CHINZANO ROSE (БОКАЛ)",price:140,dept:"Бар",cat:"ВЕРМУТ"},
+
+{id:Date.now()+337,name:"CHINZANO EXTRA DRY (БУТЫЛКА)",price:1300,dept:"Бар",cat:"ВЕРМУТ"},
+{id:Date.now()+338,name:"CHINZANO EXTRA DRY (БОКАЛ)",price:140,dept:"Бар",cat:"ВЕРМУТ"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("ШАМПАНСКОЕ")) {
+    appData.categories["Бар"].push("ШАМПАНСКОЕ");
+}
+
+appData.menu.push(
+{id:Date.now()+339,name:"BOSCA (БЕЛОЕ ПОЛУСЛАДКОЕ)",price:900,dept:"Бар",cat:"ШАМПАНСКОЕ"},
+{id:Date.now()+340,name:"BOSCA (БЕЛОЕ ПОЛУСУХОЕ)",price:900,dept:"Бар",cat:"ШАМПАНСКОЕ"},
+{id:Date.now()+341,name:"BOSCA (РОЗОВОЕ ПОЛУСЛАДКОЕ)",price:900,dept:"Бар",cat:"ШАМПАНСКОЕ"},
+{id:Date.now()+342,name:"MARTINI ASTI",price:2300,dept:"Бар",cat:"ШАМПАНСКОЕ"},
+{id:Date.now()+343,name:"MARTINI PROSECCO",price:2300,dept:"Бар",cat:"ШАМПАНСКОЕ"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("ВОДКА (50 МЛ)")) {
+    appData.categories["Бар"].push("ВОДКА (50 МЛ)");
+}
+
+appData.menu.push(
+{id:Date.now()+344,name:"РУССКИЙ СТАНДАРТ",price:250,dept:"Бар",cat:"ВОДКА (50 МЛ)"},
+{id:Date.now()+345,name:"FINLANDIA",price:260,dept:"Бар",cat:"ВОДКА (50 МЛ)"},
+{id:Date.now()+346,name:"GREY GOOSE",price:700,dept:"Бар",cat:"ВОДКА (50 МЛ)"},
+{id:Date.now()+347,name:"BELUGA",price:500,dept:"Бар",cat:"ВОДКА (50 МЛ)"},
+{id:Date.now()+348,name:"НАСТРОЕНИЕ",price:150,dept:"Бар",cat:"ВОДКА (50 МЛ)"},
+{id:Date.now()+349,name:"REYKA",price:450,dept:"Бар",cat:"ВОДКА (50 МЛ)"},
+{id:Date.now()+350,name:"ABSOLUT",price:270,dept:"Бар",cat:"ВОДКА (50 МЛ)"},
+{id:Date.now()+351,name:"АРХАНГЕЛЬСКАЯ",price:160,dept:"Бар",cat:"ВОДКА (50 МЛ)"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("ВИСКИ (50 МЛ)")) {
+    appData.categories["Бар"].push("ВИСКИ (50 МЛ)");
+}
+
+appData.menu.push(
+{id:Date.now()+352,name:"JAMESON",price:350,dept:"Бар",cat:"ВИСКИ (50 МЛ)"},
+{id:Date.now()+353,name:"CHIVAS REGAL 12",price:450,dept:"Бар",cat:"ВИСКИ (50 МЛ)"},
+{id:Date.now()+354,name:"CHIVAS REGAL 18",price:1050,dept:"Бар",cat:"ВИСКИ (50 МЛ)"},
+{id:Date.now()+355,name:"JACK DANIEL'S",price:350,dept:"Бар",cat:"ВИСКИ (50 МЛ)"},
+{id:Date.now()+356,name:"BALLANTINE'S FINEST",price:230,dept:"Бар",cat:"ВИСКИ (50 МЛ)"},
+{id:Date.now()+357,name:"BALLANTINE'S BRASIL LIME",price:250,dept:"Бар",cat:"ВИСКИ (50 МЛ)"},
+{id:Date.now()+358,name:"MACALLAN TRIPLE CASK 12",price:1050,dept:"Бар",cat:"ВИСКИ (50 МЛ)"},
+{id:Date.now()+359,name:"DEWAR'S 12",price:350,dept:"Бар",cat:"ВИСКИ (50 МЛ)"},
+{id:Date.now()+360,name:"FOUR ROSES (БУРБОН, 1 Л)",price:250,dept:"Бар",cat:"ВИСКИ (50 МЛ)"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("КОНЬЯК (50 МЛ)")) {
+    appData.categories["Бар"].push("КОНЬЯК (50 МЛ)");
+}
+
+appData.menu.push(
+{id:Date.now()+361,name:"KYRGYZSTAN",price:170,dept:"Бар",cat:"КОНЬЯК (50 МЛ)"},
+{id:Date.now()+362,name:"BISHKEK",price:170,dept:"Бар",cat:"КОНЬЯК (50 МЛ)"},
+{id:Date.now()+363,name:"MARTELL VS",price:400,dept:"Бар",cat:"КОНЬЯК (50 МЛ)"},
+{id:Date.now()+364,name:"MARTELL VSOP",price:450,dept:"Бар",cat:"КОНЬЯК (50 МЛ)"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("ВТОРОЕ")) {
+    appData.categories["Кухня"].push("ВТОРОЕ");
+}
+
+appData.menu.push(
+{id:Date.now()+365,name:"ГОВЯДИНА С ОВОЩАМИ",price:520,dept:"Кухня",cat:"ВТОРОЕ"},
+{id:Date.now()+366,name:"КУРИЦА С ОВОЩАМИ",price:520,dept:"Кухня",cat:"ВТОРОЕ"},
+{id:Date.now()+367,name:"КУРИЦА ТЕРИЯКИ",price:520,dept:"Кухня",cat:"ВТОРОЕ"},
+{id:Date.now()+368,name:"ФРИКАСЕ",price:520,dept:"Кухня",cat:"ВТОРОЕ"},
+{id:Date.now()+369,name:"КУУРДАК",price:620,dept:"Кухня",cat:"ВТОРОЕ"},
+{id:Date.now()+370,name:"ЖАРОВНЯ",price:550,dept:"Кухня",cat:"ВТОРОЕ"},
+{id:Date.now()+371,name:"БРИЗОЛЬ",price:480,dept:"Кухня",cat:"ВТОРОЕ"},
+{id:Date.now()+372,name:"КОТЛЕТЫ НА ПАРУ",price:550,dept:"Кухня",cat:"ВТОРОЕ"},
+{id:Date.now()+373,name:"КОТЛЕТЫ ПО-ЖАРСКИ",price:550,dept:"Кухня",cat:"ВТОРОЕ"},
+{id:Date.now()+374,name:"ТАНДЫР КЕБАБ",price:890,dept:"Кухня",cat:"ВТОРОЕ"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("ПАСТА")) {
+    appData.categories["Кухня"].push("ПАСТА");
+}
+
+appData.menu.push(
+{id:Date.now()+375,name:"ФЕТУЧИНИ С КУРИЦЕЙ",price:420,dept:"Кухня",cat:"ПАСТА"},
+{id:Date.now()+376,name:"СПАГЕТТИ С КУРИЦЕЙ",price:420,dept:"Кухня",cat:"ПАСТА"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("СТЕЙК")) {
+    appData.categories["Кухня"].push("СТЕЙК");
+}
+
+appData.menu.push(
+{id:Date.now()+377,name:"СТЕЙК ТИ-БОН",price:1200,dept:"Кухня",cat:"СТЕЙК"},
+{id:Date.now()+378,name:"СТЕЙК РИБАЙ",price:1300,dept:"Кухня",cat:"СТЕЙК"},
+{id:Date.now()+379,name:"ПИРЗОЛА",price:650,dept:"Кухня",cat:"СТЕЙК"},
+{id:Date.now()+380,name:"СТЕЙК ИЗ СЕМГИ",price:1000,dept:"Кухня",cat:"СТЕЙК"},
+{id:Date.now()+381,name:"ФОРЕЛЬ НА МАНГАЛЕ",price:750,dept:"Кухня",cat:"СТЕЙК"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("ШАШЛЫК")) {
+    appData.categories["Кухня"].push("ШАШЛЫК");
+}
+
+appData.menu.push(
+{id:Date.now()+382,name:"АДАНА КЕБАБ",price:450,dept:"Кухня",cat:"ШАШЛЫК"},
+{id:Date.now()+383,name:"УРФА КЕБАБ",price:450,dept:"Кухня",cat:"ШАШЛЫК"},
+{id:Date.now()+384,name:"КУШБАШИ",price:450,dept:"Кухня",cat:"ШАШЛЫК"},
+{id:Date.now()+385,name:"БЕЙТИ КЕБАБ",price:480,dept:"Кухня",cat:"ШАШЛЫК"},
+{id:Date.now()+386,name:"ШАШЛЫК ИЗ КУРИЦЫ",price:400,dept:"Кухня",cat:"ШАШЛЫК"},
+{id:Date.now()+387,name:"КУРИНЫЕ КРЫЛЫШКИ",price:400,dept:"Кухня",cat:"ШАШЛЫК"},
+{id:Date.now()+388,name:"АССОРТИ КЕБАБОВ",price:2800,dept:"Кухня",cat:"ШАШЛЫК"},
+{id:Date.now()+389,name:"КАШАРЛЫ КЕБАБ",price:480,dept:"Кухня",cat:"ШАШЛЫК"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("РАМЕН")) {
+    appData.categories["Кухня"].push("РАМЕН");
+}
+
+appData.menu.push(
+{id:Date.now()+390,name:"РАМЕН С КУРИЦЕЙ",price:280,dept:"Кухня",cat:"РАМЕН"},
+{id:Date.now()+391,name:"РАМЕН С ГОВЯДИНОЙ",price:300,dept:"Кухня",cat:"РАМЕН"},
+{id:Date.now()+392,name:"РАМЕН СЛИВОЧНЫЙ",price:290,dept:"Кухня",cat:"РАМЕН"},
+{id:Date.now()+393,name:"ТОМ ЯМ С КРЕВЕТКАМИ",price:450,dept:"Кухня",cat:"РАМЕН"},
+{id:Date.now()+394,name:"ТОМ ЯМ С КУРИЦЕЙ",price:350,dept:"Кухня",cat:"РАМЕН"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("ЗАКУСКИ К ПИВУ")) {
+    appData.categories["Бар"].push("ЗАКУСКИ К ПИВУ");
+}
+
+appData.menu.push(
+{id:Date.now()+395,name:"ЗАКУСКИ К ВОДКЕ",price:280,dept:"Бар",cat:"ЗАКУСКИ К ПИВУ"},
+{id:Date.now()+396,name:"ПИВНОЕ АССОРТИ",price:500,dept:"Бар",cat:"ЗАКУСКИ К ПИВУ"},
+{id:Date.now()+397,name:"ОСТРЫЕ КРЫЛЫШКИ",price:300,dept:"Бар",cat:"ЗАКУСКИ К ПИВУ"},
+{id:Date.now()+398,name:"СЫРНЫЕ ПАЛОЧКИ",price:300,dept:"Бар",cat:"ЗАКУСКИ К ПИВУ"},
+{id:Date.now()+399,name:"КУРИНЫЕ СТРИПСЫ",price:300,dept:"Бар",cat:"ЗАКУСКИ К ПИВУ"},
+{id:Date.now()+400,name:"НАГГЕТСЫ",price:300,dept:"Бар",cat:"ЗАКУСКИ К ПИВУ"},
+{id:Date.now()+401,name:"ГРЕНКИ",price:250,dept:"Бар",cat:"ЗАКУСКИ К ПИВУ"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("БЕЗАЛКОГОЛЬНЫЕ КОКТЕЙЛИ")) {
+    appData.categories["Бар"].push("БЕЗАЛКОГОЛЬНЫЕ КОКТЕЙЛИ");
+}
+
+appData.menu.push(
+{id:Date.now()+402,name:"ГАВАЙСКИЙ БРИЗ",price:200,dept:"Бар",cat:"БЕЗАЛКОГОЛЬНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+403,name:"МОХИТО КЛУБНИЧНЫЙ",price:200,dept:"Бар",cat:"БЕЗАЛКОГОЛЬНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+404,name:"МОХИТО CLASSIC",price:200,dept:"Бар",cat:"БЕЗАЛКОГОЛЬНЫЕ КОКТЕЙЛИ"},
+{id:Date.now()+405,name:"ПИНА КОЛАДА",price:200,dept:"Бар",cat:"БЕЗАЛКОГОЛЬНЫЕ КОКТЕЙЛИ"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("ДЕСЕРТЫ")) {
+    appData.categories["Кухня"].push("ДЕСЕРТЫ");
+}
+
+appData.menu.push(
+{id:Date.now()+406,name:"БЛИНЫ МАЧО",price:320,dept:"Кухня",cat:"ДЕСЕРТЫ"},
+{id:Date.now()+407,name:"БЛИНЫ ТОРТИК ШОКОЛАДНЫЙ",price:320,dept:"Кухня",cat:"ДЕСЕРТЫ"},
+{id:Date.now()+408,name:"ФИСТАШКОВЫЙ ЧИЗКЕЙК",price:320,dept:"Кухня",cat:"ДЕСЕРТЫ"},
+{id:Date.now()+409,name:'ЧИЗКЕЙК "МАНГО-ШОКОЛАД"',price:320,dept:"Кухня",cat:"ДЕСЕРТЫ"},
+{id:Date.now()+410,name:"ЯГОДКА",price:320,dept:"Кухня",cat:"ДЕСЕРТЫ"},
+{id:Date.now()+411,name:"МИЛКА С БАНАНОМ",price:320,dept:"Кухня",cat:"ДЕСЕРТЫ"},
+{id:Date.now()+412,name:"СЛИВОЧНЫЙ С ЯГОДНОЙ НАЧИНКОЙ",price:320,dept:"Кухня",cat:"ДЕСЕРТЫ"},
+{id:Date.now()+413,name:"САН-СЕБАСТЬЯН",price:320,dept:"Кухня",cat:"ДЕСЕРТЫ"},
+{id:Date.now()+414,name:"МАКАРОНС СТАНДАРТ",price:250,dept:"Кухня",cat:"ДЕСЕРТЫ"},
+{id:Date.now()+415,name:"ДУБАЙСКИЙ",price:380,dept:"Кухня",cat:"ДЕСЕРТЫ"}
+);
+
+
+
+if (!appData.categories["Кухня"].includes("МОРОЖЕНОЕ")) {
+    appData.categories["Кухня"].push("МОРОЖЕНОЕ");
+}
+
+appData.menu.push(
+{id:Date.now()+416,name:"КЫМЫЗ",price:100,dept:"Кухня",cat:"МОРОЖЕНОЕ"},
+{id:Date.now()+417,name:"ТАЛКАН",price:100,dept:"Кухня",cat:"МОРОЖЕНОЕ"},
+{id:Date.now()+418,name:"ШОКОЛАДНОЕ",price:100,dept:"Кухня",cat:"МОРОЖЕНОЕ"},
+{id:Date.now()+419,name:"ФИСТАШКОВОЕ",price:100,dept:"Кухня",cat:"МОРОЖЕНОЕ"},
+{id:Date.now()+420,name:"КЛУБНИЧНОЕ",price:100,dept:"Кухня",cat:"МОРОЖЕНОЕ"}
+);
+
+
+
+if (!appData.categories["Бар"].includes("ЧАЙ")) {
+    appData.categories["Бар"].push("ЧАЙ");
+}
+
+appData.menu.push(
+{id:Date.now()+421,name:"ОБЛЕПИХОВЫЙ ЧАЙ",price:250,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+422,name:'ЧАЙ "ПРЕСТИЖ"',price:250,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+423,name:"ИМБИРНЫЙ ЧАЙ",price:250,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+424,name:"ЯГОДНЫЙ ЧАЙ",price:250,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+425,name:"МАЛИНОВЫЙ ЧАЙ",price:250,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+426,name:"ЧЁРНЫЙ ЧАЙ",price:60,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+427,name:"ЗЕЛЁНЫЙ ЧАЙ",price:60,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+428,name:"МОЛОЧНЫЙ УЛУН",price:60,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+429,name:"МЁД",price:100,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+430,name:"ЛИМОН",price:60,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+431,name:"НАВАТ",price:70,dept:"Бар",cat:"ЧАЙ"},
+{id:Date.now()+432,name:"МЯТА",price:60,dept:"Бар",cat:"ЧАЙ"}
+);
+
+
+
+// КОФЕ
+if (!appData.categories["Бар"].includes("КОФЕ")) {
+    appData.categories["Бар"].push("КОФЕ");
+}
+
+appData.menu.push(
+{id:Date.now()+433,name:"АМЕРИКАНО (120 мл)",price:140,dept:"Бар",cat:"КОФЕ"},
+{id:Date.now()+434,name:"КАПУЧЧИНО (160 мл)",price:180,dept:"Бар",cat:"КОФЕ"},
+{id:Date.now()+435,name:"ЛАТТЕ (200 мл)",price:180,dept:"Бар",cat:"КОФЕ"},
+{id:Date.now()+436,name:"ЛАТТЕ С КАРАМЕЛЬЮ (200 мл)",price:180,dept:"Бар",cat:"КОФЕ"},
+{id:Date.now()+437,name:"АЙС АМЕРИКАНО (160 мл)",price:130,dept:"Бар",cat:"КОФЕ"},
+{id:Date.now()+438,name:"РАФ КОФЕ (250 мл)",price:250,dept:"Бар",cat:"КОФЕ"}
+);
+
+
+
+
+// ПИВО
+if (!appData.categories["Бар"].includes("ПИВО")) {
+    appData.categories["Бар"].push("ПИВО");
+}
+
+appData.menu.push(
+{id:Date.now()+439,name:"BUD (0.45 л)",price:230,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+440,name:"CORONA EXTRA (0.355 л)",price:300,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+441,name:"STELLA ARTOIS (0.5 л)",price:300,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+442,name:"ЧЕШСКОЕ РАЗЛИВНОЕ (0.5 л)",price:250,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+443,name:"БАВАРИЯ РАЗЛИВНОЕ (0.5 л)",price:250,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+444,name:"АРПА (0.5 л)",price:230,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+445,name:"ЖИВОЕ (0.5 л)",price:180,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+446,name:"ЖАТЕТСКИЙ ГУСЬ (РАЗЛИЧНОЕ)",price:320,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+447,name:"URBAN НЕФИЛЬТРОВАННОЕ",price:250,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+448,name:"GUINNESS (0.350 мл)",price:400,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+449,name:"ГАРАЖ (0.5 л)",price:200,dept:"Бар",cat:"ПИВО"},
+{id:Date.now()+450,name:"КУЗНЕЦ РАЗЛИВ (0.5 л)",price:260,dept:"Бар",cat:"ПИВО"}
+);
+
+
+
+
+// ТЕКИЛА (50 мл)
+if (!appData.categories["Бар"].includes("ТЕКИЛА (50 МЛ)")) {
+    appData.categories["Бар"].push("ТЕКИЛА (50 МЛ)");
+}
+
+appData.menu.push(
+{id:Date.now()+451,name:"CAMINO REAL GOLD",price:170,dept:"Бар",cat:"ТЕКИЛА (50 МЛ)"},
+{id:Date.now()+452,name:"OLMECA GOLD",price:230,dept:"Бар",cat:"ТЕКИЛА (50 МЛ)"}
+);
+
+
+
+// РОМ (50 мл)
+if (!appData.categories["Бар"].includes("РОМ (50 МЛ)")) {
+    appData.categories["Бар"].push("РОМ (50 МЛ)");
+}
+
+appData.menu.push(
+{id:Date.now()+453,name:"CAPTAIN MORGAN SPICED GOLD",price:200,dept:"Бар",cat:"РОМ (50 МЛ)"},
+{id:Date.now()+454,name:"LAMBS NAVY",price:200,dept:"Бар",cat:"РОМ (50 МЛ)"},
+{id:Date.now()+455,name:"LAMBS SPICED",price:200,dept:"Бар",cat:"РОМ (50 МЛ)"}
+);
+
+
+
+
+// ДЖИН (50 мл)
+if (!appData.categories["Бар"].includes("ДЖИН (50 МЛ)")) {
+    appData.categories["Бар"].push("ДЖИН (50 МЛ)");
+}
+
+appData.menu.push(
+{id:Date.now()+456,name:"BEEFEATER",price:280,dept:"Бар",cat:"ДЖИН (50 МЛ)"}
+);
+
+
+
+
+// ЛИКЕРЫ (50 мл)
+if (!appData.categories["Бар"].includes("ЛИКЕРЫ (50 МЛ)")) {
+    appData.categories["Бар"].push("ЛИКЕРЫ (50 МЛ)");
+}
+
+appData.menu.push(
+{id:Date.now()+457,name:"MALIBU",price:230,dept:"Бар",cat:"ЛИКЕРЫ (50 МЛ)"},
+{id:Date.now()+458,name:"KAHLUA",price:350,dept:"Бар",cat:"ЛИКЕРЫ (50 МЛ)"},
+{id:Date.now()+459,name:"BAILEYS",price:330,dept:"Бар",cat:"ЛИКЕРЫ (50 МЛ)"},
+{id:Date.now()+460,name:"BOLS TRIPLE SEC",price:330,dept:"Бар",cat:"ЛИКЕРЫ (50 МЛ)"}
+);
+
+
+
+
+// СИГАРЕТЫ
+if (!appData.categories["Бар"].includes("СИГАРЕТЫ")) {
+    appData.categories["Бар"].push("СИГАРЕТЫ");
+}
+
+appData.menu.push(
+{id:Date.now()+461,name:"PARLIAMENT (В АССОРТИМЕНТЕ)",price:290,dept:"Бар",cat:"СИГАРЕТЫ"},
+{id:Date.now()+462,name:"ESSE (В АССОРТИМЕНТЕ)",price:290,dept:"Бар",cat:"СИГАРЕТЫ"},
+{id:Date.now()+463,name:"WINSTON (В АССОРТИМЕНТЕ)",price:270,dept:"Бар",cat:"СИГАРЕТЫ"},
+{id:Date.now()+464,name:"ЗАЖИГАЛКА",price:45,dept:"Бар",cat:"СИГАРЕТЫ"}
+);
+
+save();
+updateCategorySelect();
+renderMenuList();
+
+}
+
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js");
+}
+</script>
+
+</body>
+</html>
